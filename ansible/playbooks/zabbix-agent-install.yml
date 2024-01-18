@@ -1,0 +1,42 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install zabbix-agent on Ubuntu
+      apt:
+        name: zabbix-agent
+        state: present
+      when: ansible_distribution == "Ubuntu"
+      notify: 
+      - start zabbix-agent
+    
+    - name: Install zabbix-agent on CentOS
+      yum:
+        name: zabbix-agent
+        state: present
+      when: ansible_distribution == "CentOS"
+      notify: 
+      - start zabbix-agent
+    
+    - name: Create zabbix_agentd.conf file
+      lineinfile:
+        path: /etc/zabbix/zabbix_agentd.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      with_items:
+        - { regexp: '^Server=', line: 'Server=51.250.8.206,10.128.0.32' }
+        - { regexp: '^ServerActive=', line: 'ServerActive=51.250.8.206' }
+        - { regexp: '^Hostname=', line: 'Hostname={{ ansible_hostname }}' }
+      notify: 
+      - restart zabbix-agent
+  
+  handlers:
+    - name: start zabbix-agent
+      systemd:
+        name: zabbix-agent
+        state: started
+        enabled: yes
+
+    - name: restart zabbix-agent
+      systemd:
+        name: zabbix-agent
+        state: restarted
