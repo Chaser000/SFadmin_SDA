@@ -1,0 +1,131 @@
+---
+- hosts: bd
+  gather_facts: yes
+
+  tasks:
+    - name: Install prerequisites
+      become: yes
+      apt:
+        name: 
+          - apt-transport-https
+          - openjdk-11-jre-headless  # Установим OpenJDK 11
+
+    - name: Install ElasticSearch 8.9.2
+      become: yes
+      apt: deb=https://mirror.yandex.ru/mirrors/elastic/8/pool/main/e/elasticsearch/elasticsearch-8.9.2-amd64.deb
+    
+    - name: Update Elastic Config (IP Address to 0.0.0.0)
+      become: yes
+      lineinfile:
+        destfile: /etc/elasticsearch/elasticsearch.yml
+        regexp: 'network.host'
+        line: 'network.host: 0.0.0.0'
+    
+    - name: Updating Elastic Config (Port Number)
+      become: yes
+      lineinfile:
+        destfile: /etc/elasticsearch/elasticsearch.yml
+        regexp: 'http.port'
+        line: 'http.port: 9200'
+     
+    - name: Start ElasticSearch Service
+      become: yes
+      service:
+        name: elasticsearch
+        enabled: yes
+        state: started
+
+    - name: Install Kibana 8.9.2
+      become: yes
+      apt: deb=https://mirror.yandex.ru/mirrors/elastic/8/pool/main/k/kibana/kibana-8.9.2-amd64.deb
+    
+    - name: Update Kibana Config (IP Address)
+      become: yes
+      lineinfile:
+        destfile: /etc/kibana/kibana.yml
+        regexp: 'server.host'
+        line: 'server.host: "0.0.0.0"'
+    
+    - name: Update Kibana Config (Kibana URL)
+      become: yes
+      lineinfile:
+        destfile: /etc/kibana/kibana.yml
+        regexp: 'elasticsearch.hosts'
+        line: 'elasticsearch.hosts: ["http://127.0.0.1:9200"]'
+    
+    - name: Start Kibana Service
+      become: yes
+      service:
+        name: kibana
+        enabled: yes
+        state: started
+
+    - name: Install Logstash 8.9.2
+      become: yes
+      apt: deb=https://mirror.yandex.ru/mirrors/elastic/8/pool/main/l/logstash/logstash-8.9.2-amd64.deb
+
+    - name: Create Logstash Pipeline File
+      become: yes
+      file:
+         path: /etc/logstash/conf.d/main.conf
+         state: touch
+
+    - name: Add Logstash Pipeline Configuration
+      become: yes
+      blockinfile:
+         path: /etc/logstash/conf.d/main.conf
+         marker: ""
+         block: |
+           input {
+             beats {
+               port => 5044
+             }
+           }
+           output {
+             elasticsearch { hosts => ["127.0.0.1:9200"]
+             }
+           }
+
+    - name: Install Filebeat 8.9.2
+      become: true
+      apt: deb=https://mirror.yandex.ru/mirrors/elastic/8/pool/main/f/filebeat/filebeat-8.9.2-amd64.deb
+
+    - name: Remove Filebeat YAML File
+      become: true
+      file:
+        path: /etc/filebeat/filebeat.yml
+        state: absent
+
+    - name: Create New Filebeat YAML File
+      become: true
+      file:
+         path: /etc/filebeat/filebeat.yml
+         state: touch
+
+    - name: Add Filebeat YAML Configuration
+      become: true
+      blockinfile:
+         path: /etc/filebeat/filebeat.yml
+         marker: ""
+         block: |
+           filebeat.inputs:
+           - type: log
+             enabled: true
+             paths:
+               - /var/log/*.log
+           output.logstash:
+              hosts: ["localhost:5044"]
+
+    - name: Start Filebeat Service
+      become: true
+      service:
+        name: filebeat
+        enabled: yes
+        state: started
+    
+    - name: Start Logstash Service
+      become: yes
+      service:
+        name: logstash
+        enabled: yes
+        state: started

@@ -1,0 +1,55 @@
+---
+- name: Install and initialize PostgreSQL 12 on Ubuntu 20.04
+  hosts: bd
+  become: yes
+
+  tasks:
+    - name: Add PostgreSQL APT key
+      apt_key:
+        url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+        state: present
+
+    - name: Add PostgreSQL APT repository
+      apt_repository:
+        repo: deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main
+        state: present
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install PostgreSQL 12 server and libpq-dev
+      apt:
+        name: 
+          - postgresql-12
+          - libpq-dev
+        state: present
+
+    - name: Ensure PostgreSQL service is started and enabled
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Stop PostgreSQL service before initdb
+      systemd:
+        name: postgresql
+        state: stopped
+
+    - name: Initialize the PostgreSQL database cluster
+      command: sudo -u postgres /usr/lib/postgresql/12/bin/initdb -D /var/lib/postgresql/12/main
+      ignore_errors: yes
+
+    - name: Adjust pg_hba.conf to allow password-based authentication
+      lineinfile:
+        path: /etc/postgresql/12/main/pg_hba.conf
+        regexp: '^host.*all.*all.*127.0.0.1/32.*md5'
+        line: 'host    all             all             127.0.0.1/32            md5'
+        state: present
+      notify: Restart PostgreSQL
+
+  handlers:
+    - name: Restart PostgreSQL
+      service:
+        name: postgresql
+        state: restarted

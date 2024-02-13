@@ -1,0 +1,34 @@
+- name: Установка и настройка Filebeat
+  hosts: web
+  become: true
+  vars:
+    filebeat_version: "8.9.2"  # Версия Filebeat
+    filebeat_local_dir: "/home/chaser/filebeat"  # Локальная директория с дистрибутивами Filebeat
+  tasks:
+    - name: Копирование Filebeat на удаленные серверы
+      copy:
+        src: "{{ filebeat_local_dir }}/filebeat-{{ filebeat_version }}-{{ ansible_architecture }}.{{ 'deb' if ansible_distribution == 'Ubuntu' else 'rpm' }}"
+        dest: "/tmp/filebeat-{{ filebeat_version }}-{{ ansible_architecture }}.{{ 'deb' if ansible_distribution == 'Ubuntu' else 'rpm' }}"
+      register: filebeat_copied
+
+    - name: Установка Filebeat на Ubuntu
+      block:
+        - name: Установка Filebeat на Ubuntu
+          apt:
+            deb: "/tmp/filebeat-{{ filebeat_version }}-{{ ansible_architecture }}.deb"
+            state: present
+          when: ansible_distribution == "Ubuntu"
+
+    - name: Установка Filebeat на CentOS
+      block:
+        - name: Установка Filebeat на CentOS
+          yum:
+            name: "/tmp/filebeat-{{ filebeat_version }}-{{ ansible_architecture }}.rpm"
+            state: present
+          when: ansible_distribution == "CentOS"
+
+    - name: Запуск и добавление в автозагрузку Filebeat
+      service:
+        name: filebeat
+        state: started
+        enabled: yes

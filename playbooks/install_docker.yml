@@ -1,0 +1,60 @@
+---
+- name: Install Docker and Docker Compose
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install Docker and dependencies on Ubuntu
+      block:
+        - apt:
+            name: "{{ item }}"
+            state: present
+        with_items:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - software-properties-common
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Docker and dependencies on CentOS
+      block:
+        - yum:
+            name: "{{ item }}"
+            state: present
+        with_items:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+      when: ansible_os_family == 'RedHat'
+
+    - name: Add Docker GPG key
+      block:
+        - shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          args:
+            warn: no
+      when: ansible_os_family == 'Debian'
+
+    - name: Add Docker repository
+      block:
+        - apt_repository:
+            repo: 'deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable'
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Docker Compose
+      command: >
+        curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)"
+        -o /usr/local/bin/docker-compose
+      args:
+        creates: /usr/local/bin/docker-compose
+
+    - name: Make Docker Compose executable
+      file:
+        path: /usr/local/bin/docker-compose
+        mode: '+x'

@@ -1,0 +1,111 @@
+---
+- hosts: web
+  become: yes
+
+  tasks:
+    - name: Install EPEL Repository
+      yum:
+        name: epel-release
+        state: present
+
+    - name: install nginx
+      yum:
+        name: nginx
+        state: latest
+
+    - name: install apache
+      yum:
+        name: httpd
+        state: latest
+
+    - name: Install Remi Repository for PHP 7.4
+      yum:
+        name: https://rpms.remirepo.net/enterprise/remi-release-7.rpm
+        state: present
+
+    - name: Install PHP 7.4 and PHP-FPM
+      yum:
+        name: 
+          - php
+          - php-fpm
+          - php-pear
+          - php-mysqlnd
+          - php-pdo
+          - php-mbstring
+          - php-xml
+          - php-json
+          - php-gd
+          - php-bcmath
+          - php-pecl-zip
+        state: present
+      notify: restart php-fpm
+
+    - name: install bind
+      yum:
+        name: bind
+        state: latest
+
+    - name: install postfix
+      yum:
+        name: postfix
+        state: latest
+
+    - name: Install dovecot
+      yum:
+        name: dovecot
+        state: present
+
+    - name: Install Dovecot MDA (Mail Delivery Agent)
+      yum:
+        name: dovecot-pigeonhole
+        state: present
+
+    - name: get roundcube
+      get_url:
+        url: "https://github.com/roundcube/roundcubemail/releases/download/1.6.5/roundcubemail-1.6.5-complete.tar.gz"
+        dest: /home/chaser/
+
+    - name: install roundcube
+      unarchive:
+        src: /home/chaser/roundcubemail-1.6.5-complete.tar.gz
+        dest: /var/www/html
+        remote_src: yes
+        extra_opts:
+          - --transform
+          - 's/roundcubemail-1.6.5/roundcube/'
+      
+  handlers:
+    - name: nginx is enabled and running
+      systemd:
+        name: nginx.service
+        enabled: yes
+        state: started
+
+    - name: apache is enabled and running
+      systemd:
+        name: httpd.service
+        enabled: yes
+        state: started
+
+    - name: restart php-fpm
+      service:
+        name: php-fpm
+        state: restarted
+
+    - name: bind is enabled and running
+      systemd:
+        name: named.service
+        enabled: yes
+        state: started
+
+    - name: postfix is enabled and running
+      systemd:
+        name: postfix.service
+        enabled: yes
+        state: started
+
+    - name: dovecot is enabled and running
+      systemd:
+        name: dovecot.service
+        enabled: yes
+        state: started

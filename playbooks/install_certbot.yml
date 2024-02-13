@@ -1,0 +1,34 @@
+---
+- name: Install Certbot on Ubuntu and CentOS
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install Certbot on Ubuntu
+      block:
+        - name: Add Certbot repository for Ubuntu
+          apt_repository:
+            repo: "deb http://ppa.launchpad.net/certbot/certbot/ubuntu $(lsb_release -sc) main"
+            state: present
+            update_cache: yes
+          when: ansible_os_family == 'Debian'
+
+        - name: Install Certbot on Ubuntu
+          apt:
+            name: python3-certbot
+            state: present
+            update_cache: yes
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Certbot on CentOS
+      block:
+        - name: Install EPEL repository on CentOS
+          yum:
+            name: epel-release
+            state: present
+
+        - name: Install Certbot on CentOS
+          yum:
+            name: certbot
+            state: present
+      when: ansible_os_family == 'RedHat'
