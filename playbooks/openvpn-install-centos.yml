@@ -1,0 +1,28 @@
+---
+- hosts: centos_direct
+  become: yes
+  tasks:
+  - name: Install epel-release repo
+    ansible.builtin.yum:
+      name: epel-release
+      state: latest
+
+  - name: Install OpenVPN
+    ansible.builtin.yum:
+      name: openvpn
+      state: latest
+
+  - name: Copy config to client
+    ansible.builtin.template:
+      src: /etc/openvpn/client/user2.conf
+      dest: /etc/openvpn/user2.conf
+      mode: 644
+      owner: root
+      group: root
+
+  - name: Start OpenVPN
+    systemd:
+      name: openvpn@user2
+      enabled: yes 
+      state: restarted
+

@@ -1,0 +1,30 @@
+---
+- name: Install Midnight Commander (MC) on Ubuntu and CentOS
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Install Midnight Commander on Ubuntu
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+
+        - name: Install Midnight Commander on Ubuntu
+          apt:
+            name: mc
+            state: present
+      when: ansible_os_family == 'Debian'
+
+    - name: Install Midnight Commander on CentOS
+      block:
+        - name: Install EPEL repository on CentOS
+          yum:
+            name: epel-release
+            state: present
+
+        - name: Install Midnight Commander on CentOS
+          yum:
+            name: mc
+            state: present
+      when: ansible_os_family == 'RedHat'
